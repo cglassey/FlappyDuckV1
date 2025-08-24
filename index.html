@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flappy Duck – Arcade</title>
+  <style>
+    /* Inline styles extracted from flappy-duck.css */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #0a0a0a;
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #e0e0e0;
+    }
+    .wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    .title {
+      margin-bottom: 20px;
+      font-size: 2rem;
+      font-weight: bold;
+    }
+    .game-frame {
+      display: inline-block;
+      position: relative;
+    }
+    .game-frame canvas {
+      display: block;
+    }
+    /* Arcade cabinet styling */
+    .arcade-cabinet {
+      /* On larger screens the arcade fills most of the viewport width */
+      width: 95vw;
+      max-width: 480px;
+      background: linear-gradient(180deg, #3d1a52 0%, #572881 100%);
+      border: 8px solid #cddc39;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px #8e24aa;
+      display: flex;
+      flex-direction: column;
+      /* Allow the arcade to expand to fill available height */
+      height: auto;
+    }
+    .cabinet-top {
+      background: repeating-linear-gradient(45deg, #ffeb3b, #ffeb3b 10px, #fbc02d 10px, #fbc02d 20px);
+      height: 60px;
+      border-top-left-radius: 4px;
+      border-top-right-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: #311b92;
+      text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+    }
+    .cabinet-screen {
+      background: #000;
+      padding: 6px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .game-frame.arcade {
+      width: 100%;
+      aspect-ratio: 2 / 3;
+      position: relative;
+      border: 6px solid #4a148c;
+      border-radius: 6px;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+      margin: 0 auto;
+    }
+
+    /* Ensure the canvas scales with its container on all devices */
+    .game-frame.arcade canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .cabinet-controls {
+      background: linear-gradient(180deg, #212121 0%, #1b1b1b 100%);
+      height: 80px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-bottom-left-radius: 4px;
+      border-bottom-right-radius: 4px;
+      padding-bottom: 10px;
+      padding-top: 10px;
+    }
+    .joystick {
+      width: 30px;
+      height: 30px;
+      background: #d32f2f;
+      border: 4px solid #111;
+      border-radius: 50%;
+      margin-right: 24px;
+    }
+    .buttons {
+      display: flex;
+      gap: 14px;
+    }
+    .buttons .btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 4px solid #111;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+    }
+    .buttons .btn.red {
+      background: #e53935;
+    }
+    .buttons .btn.green {
+      background: #43a047;
+    }
+    .cabinet-base {
+      background: #444;
+      height: 30px;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+    }
+    .instructions {
+      margin-top: 14px;
+      font-size: 0.9rem;
+      color: #ccc;
+      max-width: 90vw;
+    }
+    .score-display {
+      margin-top: 6px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #fff;
+    }
+    .restart-button {
+      margin-top: 12px;
+      padding: 8px 16px;
+      font-size: 1rem;
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .restart-button:hover {
+      background: #115293;
+    }
+
+    /* Mobile optimization: when the screen is small, let the arcade fill the full viewport.
+       We remove the max-width restriction, expand the height, and adjust the proportions of the machine parts. */
+    @media (max-width: 600px) {
+      .arcade-cabinet {
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        border-width: 4px;
+        border-radius: 8px;
+      }
+      .cabinet-top {
+        height: 12vh;
+        font-size: 1.4rem;
+      }
+      .cabinet-controls {
+        height: 14vh;
+      }
+      .cabinet-screen {
+        flex: 1;
+        padding: 4px;
+      }
+      .game-frame.arcade {
+        border-width: 4px;
+        border-radius: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="arcade-cabinet">
+      <div class="cabinet-top">Flappy Duck</div>
+      <div class="cabinet-screen">
+        <div class="game-frame arcade">
+          <canvas id="gameCanvas" width="360" height="540"></canvas>
+        </div>
+      </div>
+      <div class="cabinet-controls">
+        <div class="joystick"></div>
+        <div class="buttons">
+          <div class="btn red"></div>
+          <div class="btn green"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Extra information removed to maximize available space for the arcade machine. -->
+  </div>
+  <script>
+    // Inline game script extracted from flappy-duck.js
+    (function() {
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const scoreEl = document.getElementById('score');
+      // The external restart button has been removed; restart is handled via keyboard/click.
+      const restartButton = null;
+      const WIDTH = canvas.width;
+      const HEIGHT = canvas.height;
+      const GRAVITY = 0.5;
+      const JUMP_VELOCITY = -8;
+      const PIPE_WIDTH = 50;
+      const PIPE_GAP = 130;
+      const PIPE_INTERVAL = 90;
+      let frameCount;
+      let pipes;
+      let score;
+      let gameOver;
+      let startScreen = true;
+      // Define the duck with a more detailed body instead of a simple circle
+      const duck = {
+        x: WIDTH * 0.25,
+        y: HEIGHT / 2,
+        radius: 16,
+        velocity: 0,
+        update: function() {
+          // Only update position if the game has started
+          this.velocity += GRAVITY;
+          this.y += this.velocity;
+          // Prevent going above the top
+          if (this.y - this.radius < 0) {
+            this.y = this.radius;
+            this.velocity = 0;
+          }
+        },
+        jump: function() {
+          this.velocity = JUMP_VELOCITY;
+        },
+        draw: function() {
+          // draw duck body
+          ctx.fillStyle = '#fdd835';
+          // body ellipse
+          ctx.beginPath();
+          ctx.ellipse(this.x, this.y, 20, 12, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // head
+          ctx.beginPath();
+          ctx.ellipse(this.x + 18, this.y - 12, 8, 8, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // beak (orange triangle)
+          ctx.fillStyle = '#fb8c00';
+          ctx.beginPath();
+          ctx.moveTo(this.x + 24, this.y - 12);
+          ctx.lineTo(this.x + 34, this.y - 9);
+          ctx.lineTo(this.x + 24, this.y - 6);
+          ctx.closePath();
+          ctx.fill();
+          // eye
+          ctx.fillStyle = '#212121';
+          ctx.beginPath();
+          ctx.arc(this.x + 20, this.y - 14, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      };
+      function Pipe(x) {
+        this.x = x;
+        this.width = PIPE_WIDTH;
+        this.gapY = Math.random() * (HEIGHT - 2 * PIPE_GAP) + PIPE_GAP;
+        this.passed = false;
+        this.update = function() {
+          this.x -= 2;
+        };
+        this.draw = function() {
+          ctx.fillStyle = '#4caf50';
+          ctx.fillRect(this.x, 0, this.width, this.gapY - PIPE_GAP / 2);
+          ctx.fillRect(this.x, this.gapY + PIPE_GAP / 2, this.width, HEIGHT - (this.gapY + PIPE_GAP / 2));
+        };
+      }
+      function resetGame() {
+        frameCount = 0;
+        pipes = [];
+        score = 0;
+        duck.y = HEIGHT / 2;
+        duck.velocity = 0;
+        gameOver = false;
+        if (scoreEl) scoreEl.textContent = '0';
+      }
+      function spawnPipe() {
+        pipes.push(new Pipe(WIDTH));
+      }
+      function checkCollisions() {
+        // bottom collision
+        if (duck.y + 12 > HEIGHT) {
+          return true;
+        }
+        // check against pipes
+        for (const pipe of pipes) {
+          if (duck.x + 20 > pipe.x && duck.x - 20 < pipe.x + PIPE_WIDTH) {
+            if (duck.y - 12 < pipe.gapY - PIPE_GAP / 2 || duck.y + 12 > pipe.gapY + PIPE_GAP / 2) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+      function updateGame() {
+        if (startScreen) return;
+        if (gameOver) return;
+        frameCount++;
+        duck.update();
+        if (frameCount % PIPE_INTERVAL === 0) {
+          spawnPipe();
+        }
+        for (let i = pipes.length - 1; i >= 0; i--) {
+          const pipe = pipes[i];
+          pipe.update();
+          if (pipe.x + PIPE_WIDTH < 0) {
+            pipes.splice(i, 1);
+            continue;
+          }
+          if (!pipe.passed && pipe.x + PIPE_WIDTH < duck.x - 20) {
+            pipe.passed = true;
+            score++;
+            if (scoreEl) scoreEl.textContent = String(score);
+          }
+        }
+        if (checkCollisions()) {
+          gameOver = true;
+        }
+      }
+      function drawGame() {
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        ctx.fillStyle = '#e3f2fd';
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        // draw pipes if game started
+        if (!startScreen) {
+          for (const pipe of pipes) {
+            pipe.draw();
+          }
+        }
+        // draw duck always
+        duck.draw();
+        // draw score
+        ctx.fillStyle = '#212121';
+        ctx.font = '24px Arial';
+        ctx.fillText(score, 10, 30);
+        if (startScreen) {
+          // overlay start prompt
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+          ctx.fillRect(0, 0, WIDTH, HEIGHT);
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.font = '28px Arial';
+          ctx.fillText('Press Space or Click to Play', WIDTH / 2, HEIGHT / 2);
+          ctx.textAlign = 'left';
+        } else if (gameOver) {
+          // overlay game over prompt
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+          ctx.fillRect(0, 0, WIDTH, HEIGHT);
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.font = '32px Arial';
+          ctx.fillText('Game Over', WIDTH / 2, HEIGHT / 2 - 20);
+          ctx.font = '20px Arial';
+          ctx.fillText(`Score: ${score}`, WIDTH / 2, HEIGHT / 2 + 10);
+          ctx.fillText('Click or press space to restart', WIDTH / 2, HEIGHT / 2 + 40);
+          ctx.textAlign = 'left';
+        }
+      }
+      function loop() {
+        updateGame();
+        drawGame();
+        requestAnimationFrame(loop);
+      }
+      function handleInput() {
+        if (startScreen) {
+          // Start the game
+          startScreen = false;
+          resetGame();
+          return;
+        }
+        if (!gameOver) {
+          duck.jump();
+        } else {
+          // reset start screen after game over
+          startScreen = true;
+          resetGame();
+        }
+      }
+      document.addEventListener('keydown', function(e) {
+        if (e.code === 'Space' || e.code === 'ArrowUp') {
+          handleInput();
+        }
+      });
+      canvas.addEventListener('mousedown', function() {
+        handleInput();
+      });
+      canvas.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        handleInput();
+      }, { passive: false });
+      // Initialize
+      resetGame();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
